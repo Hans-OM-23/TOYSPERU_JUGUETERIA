@@ -18,13 +18,17 @@
 
 ## 🌐 Deploy en Vercel
 
+### ⚠️ IMPORTANTE: Error de permisos solucionado
+El proyecto ahora incluye `vercel.json` con la configuración correcta. Vercel detectará automáticamente el framework Vite.
+
 ### Opción A: Deploy desde la interfaz web
 
 1. Ve a [vercel.com](https://vercel.com)
 2. Inicia sesión con tu cuenta de GitHub
 3. Click en "Add New Project"
-4. Importa tu repositorio `ToysPeru-Jugeteria`
-5. **IMPORTANTE**: Configura las variables de entorno:
+4. Importa tu repositorio `TOYSPERU_JUGUETERIA`
+5. Vercel detectará automáticamente la configuración de Vite
+6. **IMPORTANTE**: Configura las variables de entorno:
    - `VITE_SUPABASE_URL` = `https://rdpbtwjuwmparbdtqoli.supabase.co`
    - `VITE_SUPABASE_ANON_KEY` = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkcGJ0d2p1d21wYXJiZHRxb2xpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQwMjIxNjMsImV4cCI6MjA3OTU5ODE2M30.w62RK311sJF1X-7SIaiKgj12g36ZYczgDU_bJ6WNSTQ`
 6. Click en "Deploy"
