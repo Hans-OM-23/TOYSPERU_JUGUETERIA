@@ -9,6 +9,7 @@ password.md
 
 # Build output
 /dist
+.vercel
 
 # Logs
 npm-debug.log*
