@@ -20,6 +20,7 @@ export default function AdminSales() {
         salesByMonth: {}
     })
     const [error, setError] = useState('')
+    const [saving, setSaving] = useState({})
 
     useEffect(() => {
         if (role !== 'admin') {
@@ -34,7 +35,7 @@ export default function AdminSales() {
             // Obtener todas las órdenes con items
             const { data: orders, error: ordersError } = await supabase
                 .from('orders')
-                .select('id, user_id, created_at, status, order_items(*)')
+                .select('id, user_id, created_at, status, payment_status, order_items(*)')
                 .order('created_at', { ascending: false })
 
             if (ordersError) throw ordersError
@@ -102,6 +103,28 @@ export default function AdminSales() {
         }
     }
 
+    async function updateOrderStatus(orderId, newStatus) {
+        try {
+            setSaving(prev => ({ ...prev, [orderId]: true }))
+            const { error: upErr } = await supabase
+                .from('orders')
+                .update({ status: newStatus })
+                .eq('id', orderId)
+
+            if (upErr) throw upErr
+
+            setSalesData(prev => ({
+                ...prev,
+                recentOrders: prev.recentOrders.map(o => o.id === orderId ? { ...o, status: newStatus } : o)
+            }))
+        } catch (e) {
+            console.error('Error actualizando estado:', e)
+            setError('No se pudo actualizar el estado: ' + (e.message || 'Error'))
+        } finally {
+            setSaving(prev => ({ ...prev, [orderId]: false }))
+        }
+    }
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
@@ -114,7 +137,7 @@ export default function AdminSales() {
     const chartData = Object.entries(salesData.salesByMonth)
         .sort()
         .slice(-12) // Últimos 12 meses
-    
+
     const maxRevenue = Math.max(...chartData.map(([, data]) => data.revenue || 0), 1)
     const maxProductQty = Math.max(...salesData.topProducts.map(p => p.quantity), 1)
 
@@ -216,6 +239,7 @@ export default function AdminSales() {
                                     <th className="text-left px-4 py-3">Items</th>
                                     <th className="text-left px-4 py-3">Total</th>
                                     <th className="text-left px-4 py-3">Estado</th>
+                                    <th className="text-left px-4 py-3">Acciones</th>
                                     <th className="text-left px-4 py-3">Fecha</th>
                                 </tr>
                             </thead>
@@ -229,13 +253,31 @@ export default function AdminSales() {
                                             <td className="px-4 py-3">{itemCount} items</td>
                                             <td className="px-4 py-3 font-semibold">S/ {convertToPen(total)}</td>
                                             <td className="px-4 py-3">
-                                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                                    order.status === 'completed' ? 'bg-green-500 bg-opacity-20 text-green-300' :
-                                                    order.status === 'pending' ? 'bg-yellow-500 bg-opacity-20 text-yellow-300' :
-                                                    'bg-red-500 bg-opacity-20 text-red-300'
-                                                }`}>
+                                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${order.status === 'completed' ? 'bg-green-500 bg-opacity-20 text-green-300' :
+                                                        order.status === 'pending' ? 'bg-yellow-500 bg-opacity-20 text-yellow-300' :
+                                                            order.status === 'processing' ? 'bg-blue-500 bg-opacity-20 text-blue-300' :
+                                                                order.status === 'confirmed' ? 'bg-purple-500 bg-opacity-20 text-purple-300' :
+                                                                    order.status === 'shipped' ? 'bg-indigo-500 bg-opacity-20 text-indigo-300' :
+                                                                        'bg-red-500 bg-opacity-20 text-red-300'
+                                                    }`}>
                                                     {order.status}
                                                 </span>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {['admin', 'manager', 'seller'].includes(role) && (
+                                                    <div className="flex items-center gap-2">
+                                                        <select
+                                                            value={order.status}
+                                                            onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+                                                            className="bg-gray-800 text-white text-xs rounded px-2 py-1 border border-white/20"
+                                                        >
+                                                            {['pending', 'processing', 'confirmed', 'shipped', 'completed', 'cancelled'].map(s => (
+                                                                <option key={s} value={s}>{s}</option>
+                                                            ))}
+                                                        </select>
+                                                        {saving[order.id] && <span className="text-xs text-gray-400">Guardando…</span>}
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="px-4 py-3 text-xs text-gray-400">
                                                 {new Date(order.created_at).toLocaleDateString('es-MX')}

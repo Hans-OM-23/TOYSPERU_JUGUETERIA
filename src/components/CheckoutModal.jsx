@@ -12,7 +12,7 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, total }) {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
     const [rememberData, setRememberData] = useState(false)
-    
+
     // Datos de envío
     const [shipping, setShipping] = useState({
         full_name: '',
@@ -23,6 +23,10 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, total }) {
         postal_code: '',
         country: 'Perú'
     })
+
+    // Email con dominio seleccionable
+    const [emailLocal, setEmailLocal] = useState('')
+    const [emailDomain, setEmailDomain] = useState('gmail.com')
 
     // Datos de pago
     const [payment, setPayment] = useState({
@@ -39,8 +43,24 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, total }) {
         if (isOpen) {
             const savedShipping = sessionStorage.getItem(`shipping_${user?.id}`)
             if (savedShipping) {
-                setShipping(JSON.parse(savedShipping))
+                const s = JSON.parse(savedShipping)
+                setShipping(s)
                 setRememberData(true)
+                // Inicializar combo a partir del email guardado
+                if (s?.email?.includes('@')) {
+                    const [local, domain] = s.email.split('@')
+                    setEmailLocal(local)
+                    setEmailDomain(['gmail.com', 'continental.edu.pe', 'outlook.com'].includes(domain) ? domain : 'gmail.com')
+                }
+            } else if (user?.email) {
+                // Inicializar desde el email del usuario autenticado
+                const [local, domain] = user.email.split('@')
+                setEmailLocal(local || '')
+                setEmailDomain(['gmail.com', 'continental.edu.pe', 'outlook.com'].includes(domain) ? domain : 'gmail.com')
+                setShipping(prev => ({ ...prev, email: user.email }))
+            } else {
+                setEmailLocal('')
+                setEmailDomain('gmail.com')
             }
         } else {
             // Reset cuando se cierra el modal
@@ -48,7 +68,14 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, total }) {
             setError('')
             setLoading(false)
         }
-    }, [isOpen, user?.id])
+    }, [isOpen, user?.id, user?.email])
+
+    // Mantener shipping.email sincronizado con el combo
+    useEffect(() => {
+        const composed = emailLocal ? `${emailLocal}@${emailDomain}` : ''
+        setShipping(prev => ({ ...prev, email: composed }))
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [emailLocal, emailDomain])
 
     function handleShippingChange(e) {
         const { name, value } = e.target
@@ -67,6 +94,11 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, total }) {
         }
         if (!shipping.email.trim()) {
             setError('Ingresa tu correo')
+            return false
+        }
+        // Validar que el email local no sea solo números (excepto para @continental.edu.pe que usa IDs)
+        if (emailLocal && /^\d+$/.test(emailLocal.trim()) && emailDomain !== 'continental.edu.pe') {
+            setError('El email no puede ser solo números. Usa tu nombre o usuario (ejemplo: juan.perez)')
             return false
         }
         if (!shipping.phone.trim()) {
@@ -203,12 +235,12 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, total }) {
                 }
             }
 
-            // Actualizar estado de pago en la orden
+            // Actualizar estado de pago en la orden: pago completado, orden pendiente de confirmación
             await supabase
                 .from('orders')
                 .update({
                     payment_status: 'completed',
-                    status: 'completed'
+                    status: 'pending'
                 })
                 .eq('id', orderId)
 
@@ -231,14 +263,14 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, total }) {
 
             // Limpiar carrito
             clearCart()
-            
+
             // Emitir evento para refrescar productos
             const refreshEvent = new CustomEvent('refreshProducts', { detail: { timestamp: Date.now() } })
             globalThis.dispatchEvent(refreshEvent)
-            
+
             // Ir a confirmación
             setStep('confirmation')
-            
+
         } catch (err) {
             console.error('Error en pago:', err)
             setError(err.message || 'Error al procesar el pago')
@@ -252,7 +284,7 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, total }) {
     return (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                
+
                 {/* Encabezado */}
                 <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6 flex items-center justify-between border-b">
                     <h2 className="text-2xl font-bold">
@@ -262,7 +294,7 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, total }) {
                         {step === 'confirmation' && '✅ Pedido Confirmado'}
                     </h2>
                     {step !== 'confirmation' && (
-                        <button 
+                        <button
                             onClick={onClose}
                             className="text-2xl font-bold hover:opacity-80"
                         >
@@ -289,14 +321,42 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, total }) {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-semibold mb-1">Email</label>
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        value={shipping.email}
-                                        onChange={handleShippingChange}
-                                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                                    />
+                                    <label className="block text-sm font-semibold mb-1" htmlFor="email-local">Email</label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            id="email-local"
+                                            type="text"
+                                            placeholder={emailDomain === 'continental.edu.pe' ? 'ID (ej: 75937419)' : 'nombre.apellido'}
+                                            value={emailLocal}
+                                            onChange={(e) => {
+                                                const val = e.target.value
+                                                if (val.includes('@')) {
+                                                    const [local, domain] = val.split('@')
+                                                    setEmailLocal(local)
+                                                    if (['gmail.com', 'continental.edu.pe', 'outlook.com'].includes(domain)) {
+                                                        setEmailDomain(domain)
+                                                    }
+                                                } else {
+                                                    setEmailLocal(val)
+                                                }
+                                            }}
+                                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                        />
+                                        <select
+                                            id="email-domain"
+                                            value={emailDomain}
+                                            onChange={(e) => setEmailDomain(e.target.value)}
+                                            className="min-w-[12rem] px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                        >
+                                            <option value="gmail.com">@gmail.com</option>
+                                            <option value="continental.edu.pe">@continental.edu.pe</option>
+                                            <option value="outlook.com">@outlook.com</option>
+                                        </select>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Email: <span className="font-semibold">{emailLocal || (emailDomain === 'continental.edu.pe' ? 'ID' : 'nombre.apellido')}@{emailDomain}</span>
+                                        {/^\d+$/.test(emailLocal) && emailDomain !== 'continental.edu.pe' && <span className="text-red-600 ml-2">⚠️ No uses solo números</span>}
+                                    </p>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-semibold mb-1">Teléfono</label>
@@ -381,11 +441,10 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, total }) {
                                         <button
                                             key={method}
                                             onClick={() => setPayment(prev => ({ ...prev, method }))}
-                                            className={`p-3 rounded-lg text-sm font-semibold transition ${
-                                                payment.method === method
-                                                    ? 'bg-indigo-600 text-white'
-                                                    : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                                            }`}
+                                            className={`p-3 rounded-lg text-sm font-semibold transition ${payment.method === method
+                                                ? 'bg-indigo-600 text-white'
+                                                : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                                                }`}
                                         >
                                             {method === 'credit_card' && '💳 Crédito'}
                                             {method === 'debit_card' && '💳 Débito'}

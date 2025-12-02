@@ -3,30 +3,30 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 
 const PAISES_LATAM = [
-    'Argentina',
-    'Bolivia',
-    'Brasil',
-    'Chile',
-    'Colombia',
-    'Costa Rica',
-    'Cuba',
-    'Ecuador',
-    'El Salvador',
-    'Guatemala',
-    'Guyana',
-    'Haití',
-    'Honduras',
-    'Jamaica',
-    'México',
-    'Nicaragua',
-    'Panamá',
-    'Paraguay',
-    'Perú',
-    'Puerto Rico',
-    'República Dominicana',
-    'Surinam',
-    'Uruguay',
-    'Venezuela'
+  'Argentina',
+  'Bolivia',
+  'Brasil',
+  'Chile',
+  'Colombia',
+  'Costa Rica',
+  'Cuba',
+  'Ecuador',
+  'El Salvador',
+  'Guatemala',
+  'Guyana',
+  'Haití',
+  'Honduras',
+  'Jamaica',
+  'México',
+  'Nicaragua',
+  'Panamá',
+  'Paraguay',
+  'Perú',
+  'Puerto Rico',
+  'República Dominicana',
+  'Surinam',
+  'Uruguay',
+  'Venezuela'
 ]
 
 export default function LoginPage() {
@@ -34,6 +34,9 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const [isRegister, setIsRegister] = useState(false)
   const [email, setEmail] = useState('')
+  // Para registro: parte local y dominio seleccionado
+  const [emailLocal, setEmailLocal] = useState('')
+  const [emailDomain, setEmailDomain] = useState('gmail.com')
   const [password, setPassword] = useState('')
   const [nombre, setNombre] = useState('')
   const [apellidos, setApellidos] = useState('')
@@ -64,11 +67,21 @@ export default function LoginPage() {
     setStatus('')
     try {
       if (isRegister) {
+        const composedEmail = `${emailLocal.trim()}@${emailDomain}`.toLowerCase()
+        if (!emailLocal.trim()) {
+          setError('Ingresa tu nombre de usuario en el email (ejemplo: juan.perez o tu.nombre)')
+          return
+        }
+        // Validar que el email local no sea solo números (excepto para @continental.edu.pe que usa IDs)
+        if (/^\d+$/.test(emailLocal.trim()) && emailDomain !== 'continental.edu.pe') {
+          setError('El email no puede ser solo números. Usa tu nombre o usuario (ejemplo: juan.perez)')
+          return
+        }
         if (!nombre.trim() || !apellidos.trim() || !pais.trim() || !ciudad.trim() || !telefono.trim()) {
           setError('Por favor completa nombre, apellidos, país, ciudad y teléfono.')
           return
         }
-        await signUp({ email, password, nombre, apellidos, pais, ciudad, telefono })
+        await signUp({ email: composedEmail, password, nombre, apellidos, pais, ciudad, telefono })
         setStatus('Registro exitoso. Revisa tu correo si se requiere confirmación.')
       } else {
         await signIn(email, password)
@@ -140,16 +153,61 @@ export default function LoginPage() {
               </div>
             </div>
           )}
-          <div>
-            <label className="block text-sm font-semibold mb-2 text-gray-700">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-              required
-            />
-          </div>
+          {isRegister ? (
+            <div>
+              <label className="block text-sm font-semibold mb-2 text-gray-700">Email</label>
+              <div className="flex gap-2">
+                <input
+                  id="email-local"
+                  type="text"
+                  placeholder={emailDomain === 'continental.edu.pe' ? 'ID (ej: 75937419)' : 'nombre.apellido'}
+                  value={emailLocal}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    // Si el usuario pega un correo completo, partirlo
+                    if (val.includes('@')) {
+                      const [local, domain] = val.split('@')
+                      setEmailLocal(local)
+                      if (['gmail.com', 'continental.edu.pe', 'outlook.com'].includes(domain)) {
+                        setEmailDomain(domain)
+                      }
+                    } else {
+                      setEmailLocal(val)
+                    }
+                  }}
+                  className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                  required
+                />
+                <div className="min-w-[12rem]">
+                  <select
+                    id="email-domain"
+                    value={emailDomain}
+                    onChange={(e) => setEmailDomain(e.target.value)}
+                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                  >
+                    <option value="gmail.com">@gmail.com</option>
+                    <option value="continental.edu.pe">@continental.edu.pe</option>
+                    <option value="outlook.com">@outlook.com</option>
+                  </select>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Email: <span className="font-semibold">{emailLocal || (emailDomain === 'continental.edu.pe' ? 'ID' : 'nombre.apellido')}@{emailDomain}</span>
+                {/^\d+$/.test(emailLocal) && emailDomain !== 'continental.edu.pe' && <span className="text-red-600 ml-2">⚠️ No uses solo números</span>}
+              </p>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-semibold mb-2 text-gray-700">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                required
+              />
+            </div>
+          )}
           <div>
             <label className="block text-sm font-semibold mb-2 text-gray-700">Password</label>
             <input

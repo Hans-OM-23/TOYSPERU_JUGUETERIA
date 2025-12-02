@@ -84,24 +84,64 @@ export default function AdminProductsPage() {
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
-    if (!form.nombre || !form.precio) {
+    if (!form.nombre || form.precio === '' || form.precio === null) {
       setError('Nombre y precio son obligatorios')
       return
     }
     try {
+      // Construir payload saneado: convertir números y evitar cadenas vacías en columnas numéricas
+      const parsedPrecio = (() => {
+        const v = String(form.precio).trim()
+        if (v === '') return null
+        const n = Number.parseFloat(v)
+        return Number.isFinite(n) ? n : null
+      })()
+
+      const parsedStock = (() => {
+        const v = String(form.stock ?? '').trim()
+        if (v === '') return null
+        const n = Number.parseInt(v, 10)
+        return Number.isFinite(n) ? n : null
+      })()
+
+      const parsedEdadMinima = (() => {
+        const v = String(form.edad_minima ?? '').trim()
+        if (v === '') return null
+        const n = Number.parseInt(v, 10)
+        return Number.isFinite(n) ? n : null
+      })()
+
+      const payload = {
+        nombre: form.nombre,
+        // La base guarda el precio en USD; enviamos número (o null). La UI muestra PEN con conversión.
+        precio: parsedPrecio,
+        imagen_url: form.imagen_url || null,
+        descripcion: form.descripcion || null,
+        stock: parsedStock,
+        es_destacado: !!form.es_destacado,
+        categoria: form.categoria || null,
+        marca: form.marca || null,
+        edad_minima: parsedEdadMinima,
+        material: form.material || null,
+        es_novedad: !!form.es_novedad
+      }
+
+      // Quitar claves con null para no forzar NOT NULL si existe
+      Object.keys(payload).forEach(k => payload[k] === null && delete payload[k])
+
       let result
       if (editing) {
-        result = await supabase.from('productos').update({ ...form }).eq('id', editing.id)
+        result = await supabase.from('productos').update(payload).eq('id', editing.id)
       } else {
-        result = await supabase.from('productos').insert({ ...form })
+        result = await supabase.from('productos').insert(payload)
       }
-      
+
       if (result.error) {
         console.error('Supabase error:', result.error)
         setError(`Error: ${result.error.message}. Verifica tus permisos de administrador.`)
         return
       }
-      
+
       setShowModal(false)
       fetchProductos()
     } catch (err) {
@@ -127,8 +167,8 @@ export default function AdminProductsPage() {
           <h2 className="text-2xl font-bold mb-2">Acceso restringido</h2>
           <p className="text-gray-600 mb-4">Necesitas rol administrador.</p>
           <p className="text-sm text-gray-500">Rol actual: <strong>{role}</strong></p>
-          <Link 
-            to="/admin/diagnostic" 
+          <Link
+            to="/admin/diagnostic"
             className="inline-block mt-4 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
           >
             Diagnosticar permisos
@@ -143,8 +183,8 @@ export default function AdminProductsPage() {
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-4xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Administrar Productos</h1>
         <div className="flex gap-3">
-          <Link 
-            to="/admin/diagnostic" 
+          <Link
+            to="/admin/diagnostic"
             className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg font-semibold"
           >
             Diagnóstico
@@ -155,7 +195,7 @@ export default function AdminProductsPage() {
       {loading ? <p>Cargando...</p> : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {productos.map(p => (
-              <div key={p.id} className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+            <div key={p.id} className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
               {p.imagen_url && (
                 <img src={p.imagen_url} alt={p.nombre} className="w-full h-48 object-cover" />
               )}
@@ -183,7 +223,7 @@ export default function AdminProductsPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl p-8 max-h-[90vh] overflow-y-auto">
-            
+
             {!isEditMode && editing ? (
               <>
                 <div className="flex items-center justify-between mb-6">
@@ -259,7 +299,7 @@ export default function AdminProductsPage() {
                 </div>
 
                 {error && <div className="text-red-600 text-sm font-semibold bg-red-50 p-4 rounded-lg border border-red-200 mt-6">{error}</div>}
-                
+
                 <div className="border-t pt-6 mt-6 flex gap-3">
                   <button type="button" onClick={enterEditMode} className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg transition-shadow">Editar Producto</button>
                   <button type="button" onClick={() => setShowModal(false)} className="flex-1 bg-gray-200 hover:bg-gray-300 py-3 rounded-lg font-semibold transition-colors">Cerrar</button>
@@ -268,7 +308,7 @@ export default function AdminProductsPage() {
             ) : (
               <>
                 <h2 className="text-3xl font-bold mb-6">{editing ? 'Editar Producto' : 'Nuevo Producto'}</h2>
-                
+
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="border-t pt-6">
                     <h3 className="text-lg font-bold mb-4">Información Básica</h3>
@@ -352,7 +392,7 @@ export default function AdminProductsPage() {
                   </div>
 
                   {error && <div className="text-red-600 text-sm font-semibold bg-red-50 p-4 rounded-lg border border-red-200">{error}</div>}
-                  
+
                   <div className="border-t pt-6 flex gap-3">
                     <button type="submit" className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg transition-shadow">Guardar Cambios</button>
                     <button type="button" onClick={() => setShowModal(false)} className="flex-1 bg-gray-200 hover:bg-gray-300 py-3 rounded-lg font-semibold transition-colors">Cancelar</button>

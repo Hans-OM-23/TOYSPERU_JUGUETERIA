@@ -61,6 +61,12 @@ export default function OrdersPage() {
         switch (status) {
             case 'completed':
                 return 'bg-green-100 text-green-800'
+            case 'confirmed':
+                return 'bg-purple-100 text-purple-800'
+            case 'processing':
+                return 'bg-blue-100 text-blue-800'
+            case 'shipped':
+                return 'bg-indigo-100 text-indigo-800'
             case 'pending':
                 return 'bg-yellow-100 text-yellow-800'
             case 'failed':
@@ -69,6 +75,27 @@ export default function OrdersPage() {
                 return 'bg-gray-100 text-gray-800'
             default:
                 return 'bg-gray-100 text-gray-800'
+        }
+    }
+
+    function getStatusText(status) {
+        switch (status) {
+            case 'completed':
+                return 'Completado'
+            case 'confirmed':
+                return 'Confirmado'
+            case 'processing':
+                return 'En proceso'
+            case 'shipped':
+                return 'Enviado'
+            case 'pending':
+                return 'Pendiente'
+            case 'failed':
+                return 'Fallido'
+            case 'cancelled':
+                return 'Cancelado'
+            default:
+                return status
         }
     }
 
@@ -140,7 +167,7 @@ export default function OrdersPage() {
                                             <div>
                                                 <p className="text-xs text-gray-500 uppercase">Estado</p>
                                                 <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(order.status)}`}>
-                                                    {order.status === 'completed' ? 'Completado' : 'Pendiente'}
+                                                    {getStatusText(order.status)}
                                                 </span>
                                             </div>
 
