@@ -169,14 +169,27 @@ USING (
 
 CREATE POLICY profiles_update ON public.profiles
 FOR UPDATE
-USING (auth.uid() = id)
-WITH CHECK (auth.uid() = id);
+USING (
+  auth.uid() = id 
+  OR auth.jwt() ->> 'role' = 'admin'
+)
+WITH CHECK (
+  auth.uid() = id 
+  OR auth.jwt() ->> 'role' = 'admin'
+);
 
 CREATE POLICY profiles_delete ON public.profiles
 FOR DELETE
 USING (auth.uid() = id OR auth.jwt() ->> 'role' = 'admin');
 
--- NO crear política INSERT - solo usar RPC
+-- Política INSERT para permitir a admins crear usuarios
+CREATE POLICY profiles_insert ON public.profiles
+FOR INSERT
+WITH CHECK (
+  auth.jwt() ->> 'role' = 'admin'
+);
+
+-- NO crear política INSERT general - solo usar RPC
 
 -- Paso 5: Otorgar permisos
 GRANT USAGE ON SCHEMA public TO authenticated;

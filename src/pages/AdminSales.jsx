@@ -49,7 +49,7 @@ export default function AdminSales() {
 
             orders.forEach(order => {
                 order.order_items?.forEach(item => {
-                    const itemTotal = (item.price || 0) * (item.quantity || 0)
+                    const itemTotal = (item.product_price || 0) * (item.quantity || 0)
                     totalRevenue += itemTotal
                     totalSales += item.quantity || 0
 
@@ -73,7 +73,7 @@ export default function AdminSales() {
             orders.forEach(order => {
                 const date = new Date(order.created_at)
                 const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-                const orderTotal = order.order_items?.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 0)), 0) || 0
+                const orderTotal = order.order_items?.reduce((sum, item) => sum + ((item.product_price || 0) * (item.quantity || 0)), 0) || 0
                 if (salesByMonthMap[monthKey]) {
                     salesByMonthMap[monthKey].revenue += orderTotal
                 }
@@ -245,7 +245,7 @@ export default function AdminSales() {
                             </thead>
                             <tbody>
                                 {salesData.recentOrders.map(order => {
-                                    const total = order.order_items?.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 0)), 0) || 0
+                                    const total = order.order_items?.reduce((sum, item) => sum + ((item.product_price || 0) * (item.quantity || 0)), 0) || 0
                                     const itemCount = order.order_items?.length || 0
                                     return (
                                         <tr key={order.id} className="border-b border-white border-opacity-10 hover:bg-white hover:bg-opacity-5">
@@ -254,11 +254,11 @@ export default function AdminSales() {
                                             <td className="px-4 py-3 font-semibold">S/ {convertToPen(total)}</td>
                                             <td className="px-4 py-3">
                                                 <span className={`px-3 py-1 rounded-full text-xs font-semibold ${order.status === 'completed' ? 'bg-green-500 bg-opacity-20 text-green-300' :
-                                                        order.status === 'pending' ? 'bg-yellow-500 bg-opacity-20 text-yellow-300' :
-                                                            order.status === 'processing' ? 'bg-blue-500 bg-opacity-20 text-blue-300' :
-                                                                order.status === 'confirmed' ? 'bg-purple-500 bg-opacity-20 text-purple-300' :
-                                                                    order.status === 'shipped' ? 'bg-indigo-500 bg-opacity-20 text-indigo-300' :
-                                                                        'bg-red-500 bg-opacity-20 text-red-300'
+                                                    order.status === 'pending' ? 'bg-yellow-500 bg-opacity-20 text-yellow-300' :
+                                                        order.status === 'processing' ? 'bg-blue-500 bg-opacity-20 text-blue-300' :
+                                                            order.status === 'confirmed' ? 'bg-purple-500 bg-opacity-20 text-purple-300' :
+                                                                order.status === 'shipped' ? 'bg-indigo-500 bg-opacity-20 text-indigo-300' :
+                                                                    'bg-red-500 bg-opacity-20 text-red-300'
                                                     }`}>
                                                     {order.status}
                                                 </span>

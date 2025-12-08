@@ -71,17 +71,26 @@ export default function AdminUsers() {
 
     async function saveEdit() {
         try {
+            // Validar que se intenta cambiar a admin
+            if (editData.role === 'admin') {
+                console.log('Intentando cambiar rol a admin:', editData)
+            }
+
             const { error } = await supabase
                 .from('profiles')
                 .update(editData)
                 .eq('id', editingId)
 
-            if (error) throw error
+            if (error) {
+                console.error('Error de Supabase:', error)
+                throw error
+            }
 
             setSuccess('Usuario actualizado exitosamente')
             setEditingId(null)
             loadUsers()
         } catch (err) {
+            console.error('Error al actualizar usuario:', err)
             setError('Error al actualizar usuario: ' + err.message)
         }
     }
@@ -93,31 +102,43 @@ export default function AdminUsers() {
                 return
             }
 
+            console.log('Creando nuevo usuario con rol:', newUserData.role)
+
             const { data: { user }, error: authError } = await supabase.auth.signUp({
                 email: newUserData.email,
                 password: Math.random().toString(36).slice(-12)
             })
 
-            if (authError) throw authError
+            if (authError) {
+                console.error('Error en signup:', authError)
+                throw authError
+            }
 
             if (user?.id) {
+                const profileData = {
+                    id: user.id,
+                    email: newUserData.email,
+                    nombre: newUserData.nombre,
+                    apellidos: newUserData.apellidos || null,
+                    pais: newUserData.pais || null,
+                    ciudad: newUserData.ciudad || null,
+                    telefono: newUserData.telefono || null,
+                    role: newUserData.role || 'user',
+                    requested_role: null,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }
+
+                console.log('Insertando perfil:', profileData)
+
                 const { error: profileError } = await supabase
                     .from('profiles')
-                    .insert([{
-                        id: user.id,
-                        email: newUserData.email,
-                        nombre: newUserData.nombre,
-                        apellidos: newUserData.apellidos || null,
-                        pais: newUserData.pais || null,
-                        ciudad: newUserData.ciudad || null,
-                        telefono: newUserData.telefono || null,
-                        role: newUserData.role || 'user',
-                        requested_role: null,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    }])
+                    .insert([profileData])
 
-                if (profileError) throw profileError
+                if (profileError) {
+                    console.error('Error al insertar perfil:', profileError)
+                    throw profileError
+                }
             }
 
             setSuccess('Usuario creado exitosamente (se envió enlace de confirmación al email)')
@@ -125,6 +146,7 @@ export default function AdminUsers() {
             setNewUserData({})
             loadUsers()
         } catch (err) {
+            console.error('Error al crear usuario:', err)
             setError('Error al crear usuario: ' + err.message)
         }
     }
